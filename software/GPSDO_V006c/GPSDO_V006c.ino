@@ -257,6 +257,19 @@ TinyGPSPlus gps;                                   // create the TinyGPS++ objec
     SEG_C | SEG_D | SEG_E | SEG_G,   // o
     SEG_C | SEG_D | SEG_E | SEG_G    // o
   };
+  const uint8_t seg_hold[] = {
+  	SEG_C | SEG_E | SEG_F | SEG_G,            // h
+    SEG_C | SEG_D | SEG_E | SEG_G,            // o
+    SEG_E | SEG_F,                            // l
+    SEG_B | SEG_C | SEG_D | SEG_E | SEG_G     // d
+	};
+	
+  const uint8_t seg_boot[] = {
+    SEG_C | SEG_D | SEG_E | SEG_F | SEG_G,    // b
+    SEG_C | SEG_D | SEG_E | SEG_G,            // o
+    SEG_C | SEG_D | SEG_E | SEG_G,            // o
+    SEG_D | SEG_E | SEG_F | SEG_G             // t
+	};
 #endif // TM1637
 
 // OLED 0.96 SSD1306 128x64
@@ -2644,7 +2657,7 @@ void setup()
     tm1637.setBrightness(5);
     // Clear the display:
     tm1637.clear();
-    tm1637.setSegments(mid_dashes);
+    tm1637.setSegments(seg_boot);
 
     Serial.println(F("TM1637 4-digit LED clock display configured"));
   #endif // TM1637
@@ -3020,7 +3033,8 @@ void loop()
     #endif // LCD_ST7789
 
     #ifdef GPSDO_TM1637
-      tm1637.setSegments(low_oooo_s);
+      tm1637.setSegments(seg_hold);
+      // tm1637.setSegments(low_oooo_s);
     #endif // TM1637    
 
     if (report_tab_delimited) {     // check what to print and where
