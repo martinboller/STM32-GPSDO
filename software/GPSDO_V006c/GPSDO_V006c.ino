@@ -1,5 +1,6 @@
 /**********************************************************************************************************
   STM32 GPSDO v0.06c by André Balsa, May 2022
+  Minor changes by Martin Boller, May 2026
   GPLV3 license
   GitHub collaborators: iannezsp (Angelo Iannello)
   ST7735 SPI LCD display support code (experimental) contributed by Badwater-Frank
@@ -16,7 +17,8 @@
 **********************************************************************************************************/
 /* Libraries required to compile, depending on configured options:
     - TinyGPS++
-    - U8g2/u8x8 graphics library, see https://github.com/olikraus/u8g2
+    - U8g2/u8x8 graphics library, see https://github.com/olikr
+    aus/u8g2
     - Adafruit AHTX0
     - Adafruit BMP280
     - Adafruit INA219
@@ -104,14 +106,20 @@
 // 6. Investigate weighed/exponential averaging.
 // 7. Program control loop algorithms as C++ objects rather than functions.
 
+/* May 2026
+ - moved TM1637 display to PB12 and PB13 as issues arose with PA8 which seem to be used for some internal
+ Clock stuff on the STM32.
+ - Changed OLED display to show Vctl instead of PWMDAC value
+*/
+
 #define Program_Name "GPSDO"
-#define Program_Version "v0.06c"
+#define Program_Version "v0.06d"
 #define Author_Name "André Balsa"
 #define Contributors "Angelo Iannelli"
 
 // Debug options
 // -------------
-#define FastBootMode          // reduce various delays during boot
+// #define FastBootMode          // reduce various delays during boot
 #define TunnelModeTesting     // reduce tunnel mode timeout
 
 // Control loop algorithms options
@@ -123,7 +131,7 @@ const uint8_t maxalgonumber = 9; // maximum number of control loop algorithms, n
 
 // Hardware options
 // ----------------
-// #define GPSDO_STM32F401       // use an STM32F401 Black Pill instead of STM32F411 (reduced RAM)
+//#define GPSDO_STM32F401       // use an STM32F401 Black Pill instead of STM32F411 (reduced RAM)
                                  // IMPORTANT! Don't forget to select the correct board in the "Tools"->"Board Part Number" menu in the Arduino IDE
 #define GPSDO_OLED            // SSD1306 128x64 I2C OLED display
 // #define GPSDO_LCD_ST7735      // ST7735 160x128 SPI LCD display
@@ -131,17 +139,17 @@ const uint8_t maxalgonumber = 9; // maximum number of control loop algorithms, n
 #define GPSDO_PWM_DAC         // STM32 16-bit PWM DAC, requires two rc filters (2xr=20k, 2xc=10uF) - always enable this!
 #define GPSDO_AHT10           // AHT10 or AHT20 (recommended) I2C temperature and humidity sensor
 #define GPSDO_GEN_2kHz_PB5    // generate 2kHz square wave test signal on pin PB5 using Timer 3
-// #define GPSDO_BMP280_SPI      // SPI atmospheric pressure, temperature and altitude sensor
-#define GPSDO_BMP280_I2C      // I2C atmospheric pressure, temperature and altitude sensor
+#define GPSDO_BMP280_SPI      // SPI atmospheric pressure, temperature and altitude sensor
+//#define GPSDO_BMP280_I2C      // I2C atmospheric pressure, temperature and altitude sensor
 #define GPSDO_INA219          // INA219 I2C current and voltage sensor
 // #define GPSDO_BLUETOOTH       // Bluetooth serial (HC-06 module)
 #define GPSDO_VCC             // Vcc (nominal 5V) ; reading Vcc requires two resistors 1:2 voltage divider to PA0
 #define GPSDO_VDD             // Vdd (nominal 3.3V) reads VREF internal ADC channel
 #define GPSDO_UBX_CONFIG      // optimize u-blox GPS receiver configuration
-#define GPSDO_VERBOSE_NMEA    // GPS module NMEA stream echoed to USB serial xor Bluetooth serial
-#define GPSDO_PICDIV          // generate a (longer than) 1.2s arming pulse for the picDIV
+//#define GPSDO_VERBOSE_NMEA    // GPS module NMEA stream echoed to USB serial xor Bluetooth serial
+//#define GPSDO_PICDIV          // generate a (longer than) 1.2s arming pulse for the picDIV
 #define GPSDO_TM1637          // TM1637 4-digit clock LED module
-#define GPSDO_LTIC            // read Lars' TIC Vphase 12-bit value on PA1 (ADC channel 1), then discharge TIC capacitor
+//#define GPSDO_LTIC            // read Lars' TIC Vphase 12-bit value on PA1 (ADC channel 1), then discharge TIC capacitor
 #define GPSDO_EEPROM          // enable STM32 buffered EEPROM emulation library
 
 // Includes
@@ -231,11 +239,11 @@ TinyGPSPlus gps;                                   // create the TinyGPS++ objec
 // TM1637 4-digit LED module
 #ifdef GPSDO_TM1637
   #include <TM1637Display.h>                      // get library here > https://github.com/avishorp/TM1637
-  bool showlocaltime = true;                      // show local time if true, UTC time if false
+  bool showlocaltime = false;                      // show local time if true, UTC time if false
   int8_t timeoffset = 2;                          // UTC to local time offset, only used for TM1637 clock!
   // Module connection pins (Digital Pins)
-  #define CLK PA8                                 // interface to TM1637 requires two GPIO pins
-  #define DIO PB4
+  #define CLK PB12 //PA8                                 // interface to TM1637 requires two GPIO pins
+  #define DIO PB13 //PB4
   TM1637Display tm1637(CLK, DIO);                 // create tm1637 object
   const uint8_t mid_dashes[] = {
     SEG_G,   // -
@@ -1269,7 +1277,7 @@ void doocxowarmup()
           disp.print(countdown);
           disp.print(F("s"));
           #endif // LCD_ST7735
-          
+  
           #ifdef GPSDO_LCD_ST7789
             // display OCXO warmup message on ST7789 LCD
             disp_st7789.fillScreen(ST77XX_BLACK); // clear display
@@ -1316,6 +1324,7 @@ void doocxowarmup()
           countdown--;
   }
   ocxo_needs_warming = false; // reset flag, next "hot" calibration skips ocxo warmup   
+  disp.clear();
 } // end of OCXO warmup routine
 
 // ---------------------------------------------------------------------------------------------
@@ -1600,11 +1609,17 @@ void printGPSDOtab(Stream &Serialx) {       // tab delimited fields suitable for
   Serialx.print(report_line_no); // line number
   Serialx.print("\t");           // tab
   
-  Serialx.print(day);            // date dd/mm/yyyy
-  Serialx.print(F("/"));
+  Serialx.print(year);          // date yyyy-mm-dd
+  Serialx.print(F("-"));
+  if (month < 10) {              // time hh:mm:ss
+    Serialx.print(F("0"));
+  }
   Serialx.print(month);
-  Serialx.print(F("/"));
-  Serialx.print(year);
+  Serialx.print(F("-"));
+  if (day < 10) {              // time hh:mm:ss
+    Serialx.print(F("0"));
+  }
+  Serialx.print(day);            
   Serialx.print(F(" "));         // <space>
 
   if (hours < 10) {              // time hh:mm:ss
@@ -1997,11 +2012,17 @@ void displayscreen_OLED() // show GPSDO data on OLED display
   //disp.clearLine(7);
   disp.setCursor(0, 7);
 
-  disp.print(day);
-  disp.print(F("/"));
-  disp.print(month);
-  disp.print(F("/"));
   disp.print(year);
+  disp.print(F("-"));
+  if (month < 10) {              // time hh:mm:ss
+    disp.print(F("0"));
+  }
+  disp.print(month);
+  disp.print(F("-"));
+  if (day < 10) {              // time hh:mm:ss
+    disp.print(F("0"));
+  }
+  disp.print(day);
 
   #if (defined (GPSDO_BMP280_SPI) || defined (GPSDO_BMP280_I2C))
   // BMP280 temperature
@@ -2028,7 +2049,9 @@ void displayscreen_OLED() // show GPSDO data on OLED display
 
   disp.setCursor(11, 7); // display PWM/DAC value
   #ifdef GPSDO_PWM_DAC
-  disp.print(adjusted_PWM_output);
+  float Vctlp = (float(avgpwmVctl)/4096) * 3.3; // PWM Vctl
+  disp.print(Vctlp); //adjusted_PWM_output)
+  disp.print(F("V"));
   #else
   disp.print(adjusted_DAC_output);
   #endif // PWM_DAC
