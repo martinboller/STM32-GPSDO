@@ -2329,7 +2329,7 @@ void setup()
   // Setup TM1637 4-digit LED module
   #ifdef GPSDO_TM1637
     // Set the display brightness (0-7):
-    tm1637.setBrightness(5);
+    tm1637.setBrightness(2);
     // Clear the display:
     tm1637.clear();
     tm1637.setSegments(mid_dashes);

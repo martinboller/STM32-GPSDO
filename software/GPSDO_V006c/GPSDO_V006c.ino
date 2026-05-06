@@ -382,8 +382,8 @@ int16_t avgpwmVctl = 0;
 #endif // BMP280_I2C
 
 #if (defined (GPSDO_BMP280_SPI) || defined (GPSDO_BMP280_I2C))
-  float PressureOffset = 1230.0;  // that offset must be calculated for your sensor and local atmospheric pressure
-  float AltitudeOffset = 1.0;     // that offset must be calculates for your sensor and local altitude
+  float PressureOffset = 185.0;  // that offset must be calculated for your sensor and local atmospheric pressure
+  float AltitudeOffset = 1.1;     // that offset must be calculates for your sensor and local altitude
   float bmp280temp=0.0, bmp280pres=0.0, bmp280alti=0.0; // read sensor, save values here
 #endif // BMP280
 
